@@ -1,0 +1,41 @@
+# Prometheus alerting rules for GET /api/v1/ops/metrics (spec §13 "Backup and incident recovery").
+# Scrape with: Authorization: Bearer $METRICS_TOKEN. Thresholds follow the specification; tune after the pilot.
+groups:
+  - name: production-automation
+    rules:
+      - alert: QueueStalled
+        expr: prodauto_jobs_oldest_due_seconds > 600
+        for: 2m
+        labels: {severity: critical}
+        annotations: {summary: "A due job has waited more than 10 minutes (workers down or stuck)."}
+      - alert: JobFailureRate
+        expr: prodauto_jobs_finished_15m >= 20 and prodauto_jobs_failure_ratio_15m > 0.05
+        labels: {severity: warning}
+        annotations: {summary: "More than 5% of jobs failed in the last 15 minutes."}
+      - alert: SyncLagging
+        expr: prodauto_sync_oldest_pending_seconds > 3600
+        labels: {severity: warning}
+        annotations: {summary: "A record has waited more than an hour to reach Google Sheets or the ERP."}
+      - alert: EmailOutcomeUnknown
+        expr: prodauto_email_unknown > 0
+        labels: {severity: critical}
+        annotations: {summary: "An email outcome is unknown. Reconcile it with provider evidence before any resend."}
+      - alert: CredentialFailure
+        expr: prodauto_connections_reconnect_required > 0
+        for: 10m
+        labels: {severity: warning}
+        annotations: {summary: "An integration needs its credentials renewed."}
+      - alert: OutboxBacklog
+        expr: prodauto_outbox_oldest_pending_seconds > 600
+        labels: {severity: warning}
+        annotations: {summary: "Committed events have not been dispatched for 10 minutes."}
+      - alert: SendsPaused
+        expr: prodauto_sends_paused == 1
+        for: 1h
+        labels: {severity: info}
+        annotations: {summary: "Outbound email has been paused for more than an hour."}
+      - alert: MetricsMissing
+        expr: absent(prodauto_jobs_due)
+        for: 5m
+        labels: {severity: critical}
+        annotations: {summary: "The API metrics endpoint is not being scraped (API down or token wrong)."}

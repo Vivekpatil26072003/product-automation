@@ -1,0 +1,72 @@
+# Local development stack only. Credentials here are throwaway development values.
+# Production uses managed services, a secret store and images pinned by digest (spec §13).
+name: prodauto
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: prod_owner          # migration/owner role (bypasses RLS as superuser)
+      POSTGRES_PASSWORD: prod_owner_dev
+      POSTGRES_DB: production
+      TZ: UTC
+    ports: ["5433:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U prod_owner -d production"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6380:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # S3-compatible object storage. MinIO stopped publishing free community images in 2025, so the
+  # local stack uses SeaweedFS (Apache-2.0). The app only speaks the S3 API, so production can use
+  # any S3-compatible service without code changes.
+  objectstore:
+    image: chrislusf/seaweedfs:4.47@sha256:ce9e796f1fe6f06968f4c04bdaf8f678dad9c8acdfef3d244133d71bfa6bf882
+    command: server -dir=/data -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json -master.volumeSizeLimitMB=256
+    ports: ["9000:8333"]
+    volumes:
+      - objectdata:/data
+      - ./seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9333/cluster/status"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  # Malware scanner (clamd INSTREAM on 3310). First start downloads signatures (several minutes, ~1.5 GB RAM).
+  clamav:
+    image: clamav/clamav:1.4@sha256:57deb108fc4c72778aa83eafbca7bb7153e28c3f57c005afd38d31f16da86f23
+    ports: ["3310:3310"]
+    volumes: [clamdb:/var/lib/clamav]
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 15s
+      timeout: 10s
+      start_period: 300s
+      retries: 20
+
+  # Local OIDC identity provider for exercising the real SSO code path.
+  # Start with: docker compose --profile oidc up -d
+  oidc:
+    image: ghcr.io/navikt/mock-oauth2-server:2.1.10
+    profiles: ["oidc"]
+    environment:
+      SERVER_PORT: "8090"
+    ports: ["8090:8090"]
+
+volumes:
+  pgdata:
+  objectdata:
+  clamdb:

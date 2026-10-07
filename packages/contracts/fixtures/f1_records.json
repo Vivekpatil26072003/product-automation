@@ -1,0 +1,24 @@
+{
+  "fixture": "F1",
+  "description": "Spec v1.0 §4 reconciled example. ILLUSTRATIVE demo data only; not verified production records. The Multifilament target of 1,000 is a proposed sample value from the spec, and machine codes other than T-04 are demo placeholders.",
+  "production_date": "2026-09-27",
+  "unit": "m",
+  "records": [
+    {"department_code": "TAPELINE", "machine_code": "T-04", "operator_name": "Rajesh", "production_qty": "1250.000", "target_qty": "1500.000", "status": "RUNNING", "stop_minutes": 30, "remarks": "Machine stopped"},
+    {"department_code": "WARPING", "machine_code": "W-02", "operator_name": "Suresh", "production_qty": "980.000", "target_qty": "1000.000", "status": "COMPLETED", "stop_minutes": 0, "remarks": ""},
+    {"department_code": "LAMINATION", "machine_code": "L-01", "operator_name": "Meena", "production_qty": "1600.000", "target_qty": "1800.000", "status": "RUNNING", "stop_minutes": 15, "remarks": ""},
+    {"department_code": "DISPATCH", "machine_code": "D-01", "operator_name": "Imran", "production_qty": "550.000", "target_qty": "700.000", "status": "HOLD", "stop_minutes": 10, "remarks": ""},
+    {"department_code": "MULTIFILAMENT", "machine_code": "MF-03", "operator_name": "Kavita", "production_qty": "450.000", "target_qty": "1000.000", "status": "PENDING", "stop_minutes": 20, "remarks": ""}
+  ],
+  "expected": {
+    "record_count": 5,
+    "production_total": "4830.000",
+    "target_total": "6000.000",
+    "achievement_pct_display": "80.5",
+    "variance": "-1170.000",
+    "stop_total_minutes": 75,
+    "status_counts": {"RUNNING": 2, "COMPLETED": 1, "PENDING": 1, "HOLD": 1},
+    "department_achievement_display": {"TAPELINE": "83.3", "WARPING": "98.0", "LAMINATION": "88.9", "DISPATCH": "78.6", "MULTIFILAMENT": "45.0"},
+    "after_tc57_correction": {"TAPELINE_production_qty": "1300.000", "production_total": "4880.000", "achievement_pct_display": "81.3"}
+  }
+}

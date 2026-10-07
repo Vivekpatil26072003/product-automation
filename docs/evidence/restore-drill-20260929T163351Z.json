@@ -1,0 +1,41 @@
+{
+  "drill_started_at": "2026-09-29T16:33:51+00:00",
+  "source_database": "production",
+  "restored_database": "production_restore_drill",
+  "dump_bytes": 915621,
+  "seconds": {
+    "backup": 0.59,
+    "restore": 1.79,
+    "verify": 2.77,
+    "total_rto": 5.15
+  },
+  "live_production_records": 69,
+  "restored": {
+    "counts": {
+      "tenants": 1,
+      "production_records": 69,
+      "revisions": 131,
+      "audit_events": 1858,
+      "reports": 73,
+      "emails": 0,
+      "purged_objects": 0
+    },
+    "report_files": {
+      "checked": 73,
+      "missing": [],
+      "checksum_mismatch": []
+    },
+    "deletion_manifest": {
+      "keys": 0,
+      "present_in_storage": 0
+    },
+    "sends_to_reconcile": {},
+    "approved_auto_send_schedules": 0,
+    "ok": true,
+    "seconds": 0.44
+  },
+  "counts_match_live": true,
+  "manifest_replay": "deletion manifest replayed: 0 object keys deleted again (missing ones are fine)",
+  "result": "PASS",
+  "before_enabling_sends": "Reconcile every QUEUED/SENDING/UNKNOWN intent listed in sends_to_reconcile with provider evidence (Sent Items / message trace); keep SENDS_PAUSED=true until done."
+}

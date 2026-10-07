@@ -1,0 +1,81 @@
+{
+  "schema_version": "1",
+  "records": [
+    {
+      "source_record_key": "U001-p1-row1",
+      "fields": {
+        "production_date": {
+          "value": "27/09/2026",
+          "evidence_ids": [
+            "S1"
+          ],
+          "issue_codes": []
+        },
+        "department": {
+          "value": "Tapeline",
+          "evidence_ids": [
+            "S2"
+          ],
+          "issue_codes": []
+        },
+        "operator_name": {
+          "value": "Rajesh",
+          "evidence_ids": [
+            "S3"
+          ],
+          "issue_codes": []
+        },
+        "machine": {
+          "value": "T-04",
+          "evidence_ids": [
+            "S4"
+          ],
+          "issue_codes": []
+        },
+        "production_qty": {
+          "value": "1250",
+          "evidence_ids": [
+            "S5"
+          ],
+          "issue_codes": []
+        },
+        "target_qty": {
+          "value": "1500",
+          "evidence_ids": [
+            "S6"
+          ],
+          "issue_codes": []
+        },
+        "unit": {
+          "value": "meter",
+          "evidence_ids": [
+            "S7"
+          ],
+          "issue_codes": []
+        },
+        "status": {
+          "value": "Running",
+          "evidence_ids": [
+            "S8"
+          ],
+          "issue_codes": []
+        },
+        "stop_minutes": {
+          "value": "30 min",
+          "evidence_ids": [
+            "S9"
+          ],
+          "issue_codes": []
+        },
+        "remarks": {
+          "value": "Machine stopped",
+          "evidence_ids": [
+            "S10"
+          ],
+          "issue_codes": []
+        }
+      }
+    }
+  ],
+  "warnings": []
+}

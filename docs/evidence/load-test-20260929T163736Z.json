@@ -1,0 +1,69 @@
+{
+  "run_started_at": "2026-09-29T16:37:36+00:00",
+  "dataset": {
+    "records": 100000,
+    "seed_seconds": 15.6
+  },
+  "workload": {
+    "concurrent_users": 20,
+    "seconds": 90,
+    "api_processes": 4
+  },
+  "endpoints": {
+    "dashboard_30d": {
+      "requests": 1276,
+      "errors": 0,
+      "p50_ms": 264.8,
+      "p95_ms": 432.8,
+      "p99_ms": 534.3
+    },
+    "dashboard_90d": {
+      "requests": 1270,
+      "errors": 0,
+      "p50_ms": 589.1,
+      "p95_ms": 788.5,
+      "p99_ms": 933.8
+    },
+    "records_30d": {
+      "requests": 1282,
+      "errors": 0,
+      "p50_ms": 241.1,
+      "p95_ms": 388.1,
+      "p99_ms": 544.6
+    },
+    "records_default": {
+      "requests": 1282,
+      "errors": 0,
+      "p50_ms": 98.0,
+      "p95_ms": 275.1,
+      "p99_ms": 475.1
+    },
+    "records_next_page": {
+      "requests": 1276,
+      "errors": 0,
+      "p50_ms": 102.5,
+      "p95_ms": 293.1,
+      "p99_ms": 434.6
+    }
+  },
+  "targets": {
+    "records_list_p95_ms": {
+      "target": 500,
+      "measured": 388.1,
+      "met": true
+    },
+    "dashboard_p95_ms": {
+      "target": 1000,
+      "measured": 788.5,
+      "met": true
+    },
+    "report_seconds": {
+      "target": 30,
+      "records": 1095,
+      "state": "READY",
+      "measured": 7.22,
+      "met": true
+    }
+  },
+  "environment": "developer laptop, Docker Desktop (WSL 2), PostgreSQL 16 container; not production sizing"
+}

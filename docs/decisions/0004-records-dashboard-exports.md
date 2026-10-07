@@ -1,0 +1,14 @@
+# ADR 0004: Records, dashboard, exports and control tower (M4)
+
+**Status:** accepted for M4 · 2026-09-29
+
+## Decisions
+
+1. **One predicate for every view.** `app/records/query.py` builds the only "approved records in scope" selection: current approved revision, ACTIVE unless archived records are asked for, and departments limited to the caller's grants. The records list, drill-down, dashboard, Excel export and control tower all use it, so their numbers cannot disagree. Naming a department outside the caller's grants returns 403; filters never widen scope.
+2. **Dashboard aggregates are one SQL statement** (`GROUPING SETS` over unit, department+unit, status and total). Every panel therefore comes from the same database snapshot. Sums are exact `numeric`, and achievement and percentages are then computed with the M1 domain formulas (ratio of totals, N/A on zero target, one decimal rounded half-up). A test checks that the SQL results equal `compute_metrics` over the same rows.
+3. **Units are never combined:** one stat-tile group and one department chart per unit.
+4. **Exports are snapshots.** `POST /exports` stores the selected rows and their metrics in `export.snapshot_json` in the request transaction, and a database trigger forbids changing them afterwards. The `export.render` worker builds the XLSX only from that snapshot, so the file equals the selection at request time even if records change later. The limit is 10,000 rows (413 above that).
+5. **XLSX cells are typed and inert.** Every text cell is written as an explicit string (no `<f>` elements, verified in tests). Quantities are numbers when the decimal round-trips through Excel's double precision, and exact decimal text otherwise. Dates are real dates. The Metadata sheet records filter, data version and time zone and is protected against accidental edits.
+6. **Control tower status per department:** SUBMITTED, REVIEW_PENDING, PROCESSING, MISSING (after the configured cutoff on a working day), AWAITING, or NOT_EXPECTED. The company time zone, `working_days` and `submission_cutoff_local_time` come from settings. Panels for later milestones (Sheets, Power BI, reports, email, reminders) say "not available yet" rather than showing invented state.
+7. **Charts:** HTML/CSS bars rather than SVG, so text stays at readable sizes on phones. Production is a bar from zero and target is an ink tick on the same scale. Every chart has a table view, hover/focus detail below the chart, and keyboard-operable drill-down. Status identity is carried by labels, not colour. The palette was checked with the dataviz validator: production blue against target ink has ΔE 30 under colour-vision deficiency, and both are at least 3:1 against the surface.
+8. **Sign-in lands on Overview** (spec §5). Viewers now have screens (Overview, records, control tower). The upload page explains the missing role instead of offering a form the server would refuse.

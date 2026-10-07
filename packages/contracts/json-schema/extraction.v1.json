@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.production-automation.local/extraction.v1.json",
+  "title": "Extraction v1 (spec v1.0 \u00a78)",
+  "description": "Structured-output contract for AI extraction. Values are source strings or null; normalization happens only in application code. Candidate IDs, tenant, approval state and totals are never model fields.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "records",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": [
+        "1"
+      ]
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/record"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "$defs": {
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "evidence_ids",
+        "issue_codes"
+      ],
+      "properties": {
+        "value": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "issue_codes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_record_key",
+        "fields"
+      ],
+      "properties": {
+        "source_record_key": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "production_date",
+            "department",
+            "operator_name",
+            "machine",
+            "production_qty",
+            "target_qty",
+            "unit",
+            "status",
+            "stop_minutes",
+            "remarks"
+          ],
+          "properties": {
+            "production_date": {
+              "$ref": "#/$defs/field"
+            },
+            "department": {
+              "$ref": "#/$defs/field"
+            },
+            "operator_name": {
+              "$ref": "#/$defs/field"
+            },
+            "machine": {
+              "$ref": "#/$defs/field"
+            },
+            "production_qty": {
+              "$ref": "#/$defs/field"
+            },
+            "target_qty": {
+              "$ref": "#/$defs/field"
+            },
+            "unit": {
+              "$ref": "#/$defs/field"
+            },
+            "status": {
+              "$ref": "#/$defs/field"
+            },
+            "stop_minutes": {
+              "$ref": "#/$defs/field"
+            },
+            "remarks": {
+              "$ref": "#/$defs/field"
+            }
+          }
+        }
+      }
+    }
+  }
+}

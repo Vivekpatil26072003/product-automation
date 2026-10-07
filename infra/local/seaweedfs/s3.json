@@ -1,0 +1,9 @@
+{
+  "identities": [
+    {
+      "name": "prodauto-local",
+      "credentials": [{"accessKey": "prodauto", "secretKey": "prodauto-dev-secret"}],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    }
+  ]
+}

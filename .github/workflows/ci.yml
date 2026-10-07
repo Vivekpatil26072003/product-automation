@@ -1,0 +1,84 @@
+# Release gates (FR29, spec §13 "CI steps"). Written and reviewed locally; not yet executed on a CI runner.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      PYTHONPATH: services/api:services
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Python dependencies (pinned)
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -r requirements.lock.txt pytest ruff pip-audit
+      - name: Web dependencies (lockfile)
+        run: npm --prefix apps/web ci
+
+      - name: Lint and format
+        run: |
+          .venv/bin/ruff check services tests
+          .venv/bin/ruff format --check services tests
+          npm --prefix apps/web run lint
+          npm --prefix apps/web run typecheck
+
+      - name: Dependency vulnerability audit
+        run: |
+          .venv/bin/pip-audit -r requirements.lock.txt
+          npm --prefix apps/web audit --omit=dev
+
+      - name: Start local infrastructure (Postgres, Redis, object store, ClamAV)
+        run: |
+          cp .env.example .env
+          docker compose -f infra/local/docker-compose.yml up -d --wait
+          .venv/bin/python -m app.cli migrate
+          .venv/bin/python -m app.cli ensure-bucket
+          .venv/bin/python -m app.cli seed-demo
+
+      - name: Backend tests (unit, API, integration; migrations applied from scratch)
+        run: .venv/bin/python -m pytest -q
+
+      - name: OpenAPI contract has not drifted
+        run: |
+          .venv/bin/python -m app.cli openapi
+          git diff --exit-code packages/contracts/openapi.json
+
+      - name: Web unit tests and production build
+        run: |
+          npm --prefix apps/web test
+          NEXT_PUBLIC_DEV_AUTH=true npm --prefix apps/web run build
+
+      - name: End-to-end and accessibility (desktop + mobile)
+        run: |
+          npx --prefix apps/web playwright install --with-deps chromium
+          npm --prefix apps/web run e2e
+
+      - name: Restore drill (backup, restore, verify, manifest replay)
+        run: .venv/bin/python infra/local/restore_drill.py
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evidence
+          path: |
+            docs/evidence/
+            apps/web/test-results/
