@@ -22,7 +22,11 @@ def answer(doc: dict, status: int = 200, extra_parts: list | None = None) -> htt
 
 def reader(handler) -> GeminiTranscriber:
     return GeminiTranscriber(
-        api_key=KEY, model="gemini-3.8-flash", http=httpx.Client(transport=httpx.MockTransport(handler))
+        api_key=KEY,
+        model="gemini-3.8-flash",
+        fallbacks=[],
+        pause=0,
+        http=httpx.Client(transport=httpx.MockTransport(handler)),
     )
 
 
@@ -114,11 +118,11 @@ def test_busy_or_retired_model_falls_back_to_the_next_one():
             return httpx.Response(404, json={})
         return answer({"legible": True, "lines": ["DATE : 02/10/26"]})
 
-    t = GeminiTranscriber(api_key=KEY, model="first", fallbacks=["second", "third"],
+    t = GeminiTranscriber(api_key=KEY, model="first", fallbacks=["second", "third"], pause=0,
                           http=httpx.Client(transport=httpx.MockTransport(handler)))  # fmt: skip
     page = t.read(filegen.png())
     assert calls == ["first", "second", "third"] and page.provider == "gemini:third"
-    bad = GeminiTranscriber(api_key=KEY, model="first", fallbacks=["second"],
+    bad = GeminiTranscriber(api_key=KEY, model="first", fallbacks=["second"], pause=0,
                             http=httpx.Client(transport=httpx.MockTransport(handler)))  # fmt: skip
     with pytest.raises(OcrError) as err:
         bad.read(filegen.png())
@@ -129,3 +133,17 @@ def test_busy_or_retired_model_falls_back_to_the_next_one():
     with pytest.raises(OcrError) as err:
         refused.read(filegen.png())
     assert err.value.code == "OCR_REJECTED"  # a refused key is not retried on other models
+
+
+def test_all_models_busy_then_a_quick_second_round_answers():
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request.url.path)
+        if len(calls) <= 2:  # both models busy in the first round
+            return httpx.Response(503, json={})
+        return answer({"legible": True, "lines": ["DATE : 02/10/26"]})
+
+    t = GeminiTranscriber(api_key=KEY, model="a", fallbacks=["b"], pause=0,
+                          http=httpx.Client(transport=httpx.MockTransport(handler)))  # fmt: skip
+    assert t.read(filegen.png()).provider == "gemini:a" and len(calls) == 3

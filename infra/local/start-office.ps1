@@ -67,12 +67,15 @@ if (-not (Test-Path $stamp) -or (Get-Content $stamp -Raw).Trim() -ne $want) {
     Set-Content $stamp $want
 }
 
-# 6. Start API (this PC only; the website forwards /api), worker, website (whole network).
+# 6. Start API (this PC only; the website forwards /api), workers, website (whole network).
 Start-Process $python -ArgumentList "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000" `
     -WorkingDirectory $root -WindowStyle Hidden `
     -RedirectStandardOutput (Join-Path $logs "api.log") -RedirectStandardError (Join-Path $logs "api-errors.log")
-Start-Process $python -ArgumentList "-m", "workers" -WorkingDirectory $root -WindowStyle Hidden `
-    -RedirectStandardOutput (Join-Path $logs "worker.log") -RedirectStandardError (Join-Path $logs "worker-errors.log")
+# Several workers: photos sent together are read at the same time (each job is taken by one worker only).
+foreach ($n in 1..3) {
+    Start-Process $python -ArgumentList "-m", "workers" -WorkingDirectory $root -WindowStyle Hidden `
+        -RedirectStandardOutput (Join-Path $logs "worker-$n.log") -RedirectStandardError (Join-Path $logs "worker-$n-errors.log")
+}
 Start-Process "cmd.exe" -ArgumentList "/c", "npx next start -H 0.0.0.0 -p 3000" -WorkingDirectory $web -WindowStyle Hidden `
     -RedirectStandardOutput (Join-Path $logs "web.log") -RedirectStandardError (Join-Path $logs "web-errors.log")
 

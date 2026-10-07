@@ -31,3 +31,12 @@ describe("pick registers", () => {
     expect(regKey("II", "27", 1)).toBe("II|27|1");
   });
 });
+
+describe("one-click corrections", () => {
+  it("changes only the suggested part of the cell", async () => {
+    const { applySuggestion } = await import("./registers");
+    expect(applySuggestion({ reading: "2284", picks: "24", status: null }, { slot: 3, field: "reading", value: "2234", why: "" })).toBe("2234 24");
+    expect(applySuggestion({ reading: "9", picks: null, status: null }, { slot: 4, field: "picks", value: "9", why: "" })).toBe("9 9");
+    expect(applySuggestion({ reading: "0", picks: "9", status: null }, { slot: 3, field: "picks", value: null, why: "" })).toBe("0");
+  });
+});

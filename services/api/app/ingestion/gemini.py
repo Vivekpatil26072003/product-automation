@@ -10,6 +10,7 @@ The key is sent only in the request header, never logged or stored; provider bod
 
 import base64
 import json
+import time
 from typing import Any
 
 import httpx
@@ -75,6 +76,7 @@ class GeminiTranscriber:
         model: str | None = None,
         http: httpx.Client | None = None,
         fallbacks: list[str] | None = None,
+        pause: float = 5.0,
     ):
         s = get_settings()
         self.model = model or s.gemini_model
@@ -85,7 +87,9 @@ class GeminiTranscriber:
         if not key:
             raise OcrError("OCR_NOT_CONFIGURED", "OCR_PROVIDER=gemini needs GEMINI_API_KEY in the server .env.", False)
         self._key = key
-        self._http = http or httpx.Client(timeout=s.ai_timeout_seconds * 2)
+        # A page is read in 10-25 s; an answer slower than this is a busy model: the next one is tried.
+        self._http = http or httpx.Client(timeout=min(s.ai_timeout_seconds, 45.0))
+        self.pause = pause
 
     def read(self, image_png: bytes) -> OcrPage:
         body = {
@@ -102,14 +106,19 @@ class GeminiTranscriber:
             "generationConfig": {"temperature": 0, "responseMimeType": "application/json", "responseSchema": SCHEMA},
         }
         last: OcrError | None = None
-        for model in self.models:
-            try:
-                return self._read(model, body)
-            except OcrError as exc:
-                if not (exc.transient or exc.code == "OCR_MODEL_UNAVAILABLE"):
-                    raise
-                last = exc  # busy or retired: the next model may answer
-        assert last is not None  # every model was busy (retried later) or retired (a configuration problem)
+        for attempt in range(2):  # Google's "busy" usually passes within seconds: one quick second round
+            if attempt:
+                time.sleep(self.pause)
+            for model in self.models:
+                try:
+                    return self._read(model, body)
+                except OcrError as exc:
+                    if not (exc.transient or exc.code == "OCR_MODEL_UNAVAILABLE"):
+                        raise
+                    last = exc  # busy or retired: the next model may answer
+            if last is not None and not last.transient:
+                break
+        assert last is not None  # every model was busy (the job retries later) or retired (a configuration problem)
         raise last
 
     def _read(self, model: str, body: dict[str, Any]) -> OcrPage:
@@ -129,7 +138,7 @@ class GeminiTranscriber:
                 "OCR_RATE_LIMITED", "Gemini's free limit was reached; the page will be retried.", True, retry
             )
         if r.status_code >= 500:
-            raise OcrError("OCR_UNAVAILABLE", f"Gemini answered {r.status_code}; the page will be retried.", True, 30.0)
+            raise OcrError("OCR_UNAVAILABLE", f"Gemini answered {r.status_code}; the page will be retried.", True, 10.0)
         if r.status_code == 404:
             raise OcrError(
                 "OCR_MODEL_UNAVAILABLE",

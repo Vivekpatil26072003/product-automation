@@ -6,8 +6,17 @@ export type RegShift = "I" | "II" | "III";
 export type RegCell = {
   slot: number; reading: string | null; picks: string | null; status: string | null; status_label: string;
   source: "read" | "ai" | "reviewer" | "manual" | null; uncertain: boolean; note: string | null; raw: string | null;
-  evidence: { upload_id: string; span_id: string }[]; checks: { code: string; text: string }[]; accepted: string[];
+  evidence: { upload_id: string; span_id: string }[]; checks: { code: string; text: string; suggestion: Suggestion | null }[];
+  accepted: string[];
 };
+/** A correction two independent numbers on the page agree on; applied only when a person clicks it. */
+export type Suggestion = { slot: number; field: "reading" | "picks"; value: string | null; why: string };
+
+/** The cell text after taking a suggestion (the other parts of the cell stay as they are). */
+export function applySuggestion(current: ParsedCell, s: Suggestion): string {
+  return cellText({ ...current, [s.field]: s.value });
+}
+
 export type RegMachine = { machine: string; cells: RegCell[]; total: string | null };
 export type RegColumn = {
   slot: number; time: string; calculated: string | null; written: string | null; match: boolean | null;

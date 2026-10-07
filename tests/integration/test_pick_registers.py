@@ -56,7 +56,7 @@ def patch(client, reg, body) -> dict:
 def test_register_photos_to_database_checks_files_and_email(client, seeded, monkeypatch, owner_engine):
     sign_in(client, seeded, "dev-reviewer")
     first = photo(client, seeded, monkeypatch, PAGE_SHIFT_II, name="wgs02-shift2.png")
-    photo(client, seeded, monkeypatch, PAGE_SHIFT_III, name="wgs02-shift3.png")
+    photo(client, seeded, monkeypatch, PAGE_SHIFT_III, name="wgs02-shift3.png", width=421)
     reg = register_of(client, first["batch_id"])
 
     # Both pages went into the register of the written date; one per department and day.
@@ -183,7 +183,7 @@ def test_second_photo_of_a_page_confirms_and_flags_differences(client, seeded, m
     sign_in(client, seeded, "dev-reviewer")
     first = photo(client, seeded, monkeypatch, PAGE_SHIFT_II, name="a.png")
     again = [x.replace("2210 19", "2216 19") for x in PAGE_SHIFT_II]  # one number read differently
-    photo(client, seeded, monkeypatch, again, name="b.png")
+    photo(client, seeded, monkeypatch, again, name="b.png", width=421)
     reg = register_of(client, first["batch_id"])
     c = cell(reg, "II", "28", 2)
     assert c["reading"] == "2210" and c["uncertain"] and "2216" in c["note"]
@@ -243,3 +243,16 @@ def test_photo_read_by_gemini_goes_into_the_register_and_sql(client, seeded, mon
     db = sqlite3.connect(":memory:")
     db.executescript(sql)
     assert db.execute("SELECT COUNT(*) FROM pick_reading WHERE shift='III'").fetchone()[0] == 131
+
+
+def test_the_same_photo_uploaded_again_is_not_read_twice(client, seeded, monkeypatch):
+    """Workers re-send the same WhatsApp photo; a second reading (OCR / AI vary run to run) would only add
+    differences to check. The exact same file is recorded and noted, not merged again."""
+    sign_in(client, seeded, "dev-reviewer")
+    first = photo(client, seeded, monkeypatch, PAGE_SHIFT_II, name="shift2.png")
+    again = [x.replace("2210 19", "2216 19") for x in PAGE_SHIFT_II]  # a different reading of the same photo
+    photo(client, seeded, monkeypatch, again, name="shift2-again.png")
+    reg = register_of(client, first["batch_id"])
+    assert cell(reg, "II", "28", 2)["reading"] == "2210" and not cell(reg, "II", "28", 2)["uncertain"]
+    assert [s["values_read"] for s in reg["sources"]] == [129, 0]
+    assert any(n["label"] == "Same photo" for n in reg["notes"])

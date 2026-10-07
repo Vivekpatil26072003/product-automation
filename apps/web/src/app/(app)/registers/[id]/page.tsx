@@ -8,7 +8,7 @@ import { SendSheetEmail } from "@/components/sheets/SendSheetEmail";
 import { hasRole, useSession } from "@/components/SessionProvider";
 import { ApiError, apiGet, apiSend } from "@/lib/api";
 import {
-  cellText, compareMachines, parseCell, REG_FORMATS, registerFileUrl, regKey, type Register, type RegShift,
+  applySuggestion, cellText, compareMachines, parseCell, REG_FORMATS, registerFileUrl, regKey, type Register, type RegShift,
   type RegShiftView,
 } from "@/lib/registers";
 import { dayLabel, EMAIL_STATE_LABEL, fmt, SOURCE_LABEL, validNumber } from "@/lib/sheets";
@@ -336,6 +336,20 @@ function ShiftTable({ view, extra, editable, edits, totals, confirms, onEdit, on
                         {check ? (
                           <div id={help} className="reason" style={{ fontSize: 12 }}>
                             {reasons.join(" ")}
+                            {editable && (cell?.checks ?? []).filter((c) => c.suggestion).slice(0, 1).map((c) => {
+                              const s = c.suggestion!;
+                              const targetKey = regKey(view.shift, m, s.slot);
+                              const target = row?.cells[s.slot];
+                              const now = targetKey in edits ? parseCell(edits[targetKey] ?? "", s.slot) : null;
+                              const base = now?.ok ? now.value : { reading: target?.reading ?? null, picks: target?.picks ?? null, status: target?.status ?? null };
+                              const label = s.value === null ? `Clear the picks${s.slot !== k ? ` at ${view.times[s.slot]}` : ""}` : `Use ${s.value}${s.slot !== k ? ` at ${view.times[s.slot]}` : ""}`;
+                              return (
+                                <span key="fix">
+                                  {" "}<button type="button" className="linklike" title={s.why} onClick={() => onEdit(targetKey, applySuggestion(base, s))}>{label}</button>
+                                  <span className="meta"> ({s.why})</span>
+                                </span>
+                              );
+                            })}
                             {editable && <> <button type="button" className="linklike" onClick={() => onConfirm(key)}>OK</button></>}
                           </div>
                         ) : cell?.source ? (

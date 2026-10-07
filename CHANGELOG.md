@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.12.1] - 2026-10-07: Faster reading, several photos at once, one-click corrections
+
+### Added
+- **Several photos at once:** on *Diary photos*, "Take photo" collects pages in a list (preview, remove), and
+  "Send N photos" uploads them together, three at a time.
+- **One-click corrections:** a check gets a "Use 2234" button when two independent numbers on the page agree on the
+  right value. For example, 2210 + 24 = 2234 and 2259 - 25 = 2234. The worker's own register mistakes get none.
+  The reviewer still decides.
+- **Same photo sent again:** an identical file for the same page and shift is noted, not read again. Reading it
+  twice only added "Another page shows ..." differences.
+
+### Changed
+- Gemini `gemini-3.1-flash-lite` first: it answers in 10-25 s with the same accuracy, while larger free models
+  were mostly busy. When every model is busy, the app retries once after 5 s; calls time out after 45 s.
+- `start-office.ps1` runs 3 workers, so photos sent together are read at the same time: two register pages in
+  about 20 s (before: 2 min and more).
+- Batch steps: for a batch with only sheets or registers, "PDF report" and "Emailed to owner" are marked not
+  needed (they have their own files and email).
+
 ## [0.12.0] - 2026-10-06: Pick reading registers (WGS-02)
 
 ### Added

@@ -76,3 +76,11 @@ Send Email (Reviewer, Sender, Admin) works like the daily sheet email:
 - The Claude register reader is not yet evaluated on real photos. In staging and production it runs only after its
   model release is approved (FR28 gate).
 - The shift times are fixed in `app/pick_registers/layout.py` (I 08-16, II 16-24, III 00-08).
+
+## Checking faster
+
+- **One-click corrections:** a highlighted cell may show **Use 2234** (with the reason, e.g. "2210 + 24 = 2234 and
+  2259 - 25 = 2234"). It appears only when two independent numbers agree. Click it, then **Save changes**.
+- **Send each photo once:** an identical photo of the same page is not read again (noted on the register). A new
+  photo of the same page is compared cell by cell; differences are highlighted.
+- **Speed:** a page takes 10-25 s with Gemini flash-lite. Photos sent together are read in parallel (3 workers).

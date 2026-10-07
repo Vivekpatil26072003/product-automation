@@ -32,6 +32,9 @@ class Issue:
     code: str
     text: str
     signature: str
+    # A correction the other numbers on the page agree on (never applied by itself): the reviewer can take it with
+    # one click. {"slot": time slot to change, "field": "reading" | "picks", "value": str | None, "why": str}
+    suggestion: dict[str, Any] | None = None
 
 
 @dataclass
@@ -87,6 +90,7 @@ def calculate(
     ratio_machines = _differences(values, out)
     _continuity(values, out, previous_end or {})
     _columns(values, written, out)
+    _suggest(values, written, out, previous_end or {})
     for (sh, m), ratio in sorted(ratio_machines.items(), key=lambda x: (SHIFTS.index(x[0][0]), machine_sort(x[0][1]))):
         out.notes.append(
             {
@@ -265,6 +269,82 @@ def _columns(values: dict, written: dict[tuple[str, int], Decimal | None], out: 
                             f"col:{_n(w)}:{calc}:{_n(picks)}",
                         )
                     )
+
+
+def _suggest(values: dict, written: dict, out: Result, previous_end: dict[str, Decimal]) -> None:
+    """Attach a correction to a check only when two independent numbers on the page agree on it."""
+
+    def at(sh: str, m: str, k: int) -> Any:
+        return values.get((sh, m, k))
+
+    def column_fits(sh: str, k: int, old: Decimal | None, new: Decimal | None) -> bool:
+        w, calc = written.get((sh, k)), out.column_total.get((sh, k))
+        return w is not None and (calc or 0) - (old or 0) + (new or 0) == w
+
+    for (sh, m, k), issues in out.issues.items():
+        v = at(sh, m, k)
+        prev = _prev_reading(values, sh, m, k) if k else None
+        for issue in issues:
+            options: list[dict[str, Any]] = []
+            if issue.code == "PICKS_DIFFERENCE" and prev is not None:
+                j, before = prev
+                fixed = before + v.picks  # the reading is wrong
+                nxt = at(sh, m, k + 1) if k < 4 else None
+                nxt_ok = nxt is not None and nxt.reading is not None and nxt.picks is not None
+                if nxt_ok and rollover_diff(fixed, nxt.reading) == nxt.picks:
+                    options.append(
+                        {
+                            "slot": k,
+                            "field": "reading",
+                            "value": _n(fixed),
+                            "why": f"{_n(before)} + {_n(v.picks)} = {_n(fixed)} and "
+                            f"{_n(nxt.reading)} - {_n(nxt.picks)} = {_n(fixed)}",
+                        }  # fmt: skip
+                    )
+                earlier = v.reading - v.picks  # the previous reading is wrong
+                pj = at(sh, m, j)
+                back = _prev_reading(values, sh, m, j) if j else None
+                if j and pj.picks is not None and back is not None and rollover_diff(back[1], earlier) == pj.picks:
+                    options.append(
+                        {
+                            "slot": j,
+                            "field": "reading",
+                            "value": _n(earlier),
+                            "why": f"{_n(v.reading)} - {_n(v.picks)} = {_n(earlier)} and "
+                            f"{_n(back[1])} + {_n(pj.picks)} = {_n(earlier)}",
+                        }  # fmt: skip
+                    )
+                elif j == 0:
+                    end = _last_reading(values, PREVIOUS[sh], m) if sh in PREVIOUS else previous_end.get(m)
+                    if end is not None and end == earlier:
+                        options.append(
+                            {"slot": 0, "field": "reading", "value": _n(earlier),
+                             "why": f"{_n(v.reading)} - {_n(v.picks)} = {_n(earlier)}, where the previous shift ended"}
+                        )  # fmt: skip
+                diff = rollover_diff(before, v.reading)  # the picks are wrong
+                if column_fits(sh, k, v.picks, diff):
+                    options.append(
+                        {"slot": k, "field": "picks", "value": _n(diff),
+                         "why": f"{_n(v.reading)} - {_n(before)} = {_n(diff)} and the written column total agrees"}
+                    )  # fmt: skip
+            elif issue.code == "MISSING_PICKS" and prev is not None:
+                diff = rollover_diff(prev[1], v.reading)
+                if column_fits(sh, k, None, diff):
+                    options.append(
+                        {"slot": k, "field": "picks", "value": _n(diff),
+                         "why": f"{_n(v.reading)} - {_n(prev[1])} = {_n(diff)} and the written column total agrees"}
+                    )  # fmt: skip
+            elif issue.code == "COLUMN_TOTAL" and v.picks is not None:
+                w, calc = written.get((sh, k)), out.column_total.get((sh, k))
+                fit = v.picks + (w or 0) - (calc or 0)
+                if prev is None and fit == 0:  # picks under a first reading: they belong elsewhere
+                    why = "no earlier reading to count picks from, and the column total then agrees"
+                    options.append({"slot": k, "field": "picks", "value": None, "why": why})
+                elif prev is not None and fit >= 0 and rollover_diff(prev[1], v.reading) == fit:
+                    why = f"{_n(v.reading)} - {_n(prev[1])} = {_n(fit)} and the column total agrees"
+                    options.append({"slot": k, "field": "picks", "value": _n(fit), "why": why})
+            if len(options) == 1:
+                issue.suggestion = options[0]
 
 
 def open_issues(issues: list[Issue], accepted: str | None) -> list[Issue]:

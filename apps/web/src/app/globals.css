@@ -265,6 +265,9 @@ textarea.prose-input { font: inherit; line-height: 1.5; }
 .diary-actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); margin: var(--s3) 0; }
 button.big, .button.big { min-height: 64px; font-size: 18px; }
 .diary-list { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--s3); }
+.photo-tray { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: var(--s2); }
+.photo-tray li { display: grid; gap: 4px; }
+.photo-tray img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border: 1px solid var(--border); border-radius: 6px; }
 @media (max-width: 480px) { .diary-actions { grid-template-columns: 1fr; } }
 
 /* Daily sheet: calculated rows are visibly different (and say "calculated"); the save bar stays reachable. */

@@ -93,6 +93,20 @@ def merge_reading(
             )
         )
         row = conn.execute(select(pr).where(pr.c.id == register_id)).one()
+    same_photo = conn.execute(
+        select(t.upload.c.display_name)
+        .join(ps, ps.c.upload_id == t.upload.c.id)
+        .where(
+            ps.c.register_id == row.id,
+            ps.c.page_no == page_no,
+            ps.c.shift == shift,
+            ps.c.upload_id != upload.id,
+            t.upload.c.declared_sha256 == upload.declared_sha256,
+        )
+        .limit(1)
+    ).scalar_one_or_none()
+    if same_photo is not None:  # the exact same photo again: reading it twice only adds differences to check
+        return _same_photo(conn, row, upload, batch, page_no, shift, reader, same_photo)
     existing = {
         (v.machine, v.slot): v for v in conn.execute(select(pv).where(pv.c.register_id == row.id, pv.c.shift == shift))
     }
@@ -212,6 +226,34 @@ def merge_reading(
     return row.id
 
 
+def _same_photo(
+    conn: Connection, row: Any, upload: Any, batch: Any, page_no: int, shift: str, reader: str, first: str
+) -> uuid.UUID:
+    text = f"{upload.display_name} is the same photo as {first}: it was not read again."
+    notes = row.notes or []
+    if not any(n.get("text") == text for n in notes):
+        conn.execute(
+            update(pr)
+            .where(pr.c.id == row.id)
+            .values(notes=(notes + [{"label": "Same photo", "text": text}])[:50], version=pr.c.version + 1)
+        )
+    stmt = pg_insert(ps).values(
+        id=uuid.uuid4(), tenant_id=upload.tenant_id, register_id=row.id, upload_id=upload.id, batch_id=batch.id,
+        page_no=page_no, shift=shift, reader=f"{reader} (same photo)", values_read=0, conflicts=0,
+    )  # fmt: skip
+    conn.execute(stmt.on_conflict_do_nothing(index_elements=["register_id", "upload_id", "page_no"]))
+    audit.record(
+        conn,
+        tenant_id=upload.tenant_id,
+        actor=SERVICE,
+        action="REGISTER_PAGE_SKIPPED",
+        object_type="pick_register",
+        object_id=row.id,
+        after={"upload_id": str(upload.id), "page": page_no, "reason": "same photo", "first": first},
+    )
+    return row.id
+
+
 def _cell_text(c: Any) -> str:
     parts = [p for p in (_s(c.reading), f"({_s(c.picks)})" if c.picks is not None else None, c.status) if p]
     return " ".join(parts) or "nothing"
@@ -306,7 +348,7 @@ def register_view(conn: Connection, principal: Principal, register_id: uuid.UUID
                         "note": v.note if v is not None else None,
                         "raw": v.raw if v is not None else None,
                         "evidence": v.evidence if v is not None else [],
-                        "checks": [{"code": i.code, "text": i.text} for i in open_],
+                        "checks": [{"code": i.code, "text": i.text, "suggestion": i.suggestion} for i in open_],
                         "accepted": [i.text for i in issues if i not in open_],
                     }
                 )

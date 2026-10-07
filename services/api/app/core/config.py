@@ -35,9 +35,9 @@ class Settings(BaseSettings):
     azure_di_api_version: str = "2024-11-30"
     # OCR_PROVIDER=gemini: Google Gemini transcribes photos (a free AI Studio key works). Secret: never logged.
     gemini_api_key: SecretStr | None = Field(default=None, repr=False)
-    gemini_model: str = "gemini-3.8-flash"
+    gemini_model: str = "gemini-3.1-flash-lite"
     # Tried in order when GEMINI_MODEL is busy (503 / 429) or retired (404).
-    gemini_fallback_models: str = "gemini-3.5-flash,gemini-3.1-flash-lite"
+    gemini_fallback_models: str = "gemini-3.5-flash,gemini-3.8-flash"
 
     # AI extraction (decision D6: Anthropic Claude). The API key is read by the SDK from
     # ANTHROPIC_API_KEY and never stored in settings or logs. "none" = deterministic extractors only.

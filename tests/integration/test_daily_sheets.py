@@ -30,9 +30,9 @@ def drain() -> None:
         pass
 
 
-def photo(client, seeded, monkeypatch, lines, name="diary-page.png", confidence=0.97) -> dict:
+def photo(client, seeded, monkeypatch, lines, name="diary-page.png", confidence=0.97, width=420) -> dict:
     monkeypatch.setattr("workers.ingestion.get_ocr", lambda: NoteOcr(lines, confidence))
-    files = {name: filegen.png(420, 300)}
+    files = {name: filegen.png(width, 300)}  # a different width is a different photo
     body = start_batch(client, seeded, files)
     complete_all(client, body, files)
     drain()

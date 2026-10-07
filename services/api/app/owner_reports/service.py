@@ -457,7 +457,7 @@ def pipeline(conn: Connection, principal: Principal, batch_id: uuid.UUID) -> dic
                     f"{c['entries_approved']} production entr{'y' if c['entries_approved'] == 1 else 'ies'}"
                     if c["entries_approved"]
                     else "",
-                    f"{c['sheets_approved']} daily sheet(s)" if c["sheets_approved"] else "",
+                    f"{c['sheets_approved']} sheet(s) / register(s)" if c["sheets_approved"] else "",
                 )
                 if x
             )
@@ -465,7 +465,15 @@ def pipeline(conn: Connection, principal: Principal, batch_id: uuid.UUID) -> dic
             else "",
         )
     )
-    if report is None:
+    own_files = "Not needed: open the sheet or register for its Excel, PDF, SQL and email"
+    only_sheets = (
+        report is None
+        and c["sheets_waiting"] + c["sheets_approved"] > 0
+        and not any(c[k] for k in c if k.startswith(("orders_", "entries_")))
+    )
+    if only_sheets:  # the owner report covers orders and production entries; sheets and registers have their own
+        stages.append(stage("report", "PDF report", "skipped", own_files))
+    elif report is None:
         stages.append(stage("report", "PDF report", "waiting"))
     else:
         rs = {"READY": "done", "FAILED": "failed"}.get(report.state, "current")
@@ -476,6 +484,8 @@ def pipeline(conn: Connection, principal: Principal, batch_id: uuid.UUID) -> dic
             delivery.state, delivery.error_message or "Sending…"
         )
         stages.append(stage("email", "Emailed to owner", ds, detail))
+    elif only_sheets:
+        stages.append(stage("email", "Emailed to owner", "skipped", own_files))
     elif cfg is None or not cfg.auto_send:
         stages.append(stage("email", "Emailed to owner", "skipped", "Automatic owner email is off"))
     else:

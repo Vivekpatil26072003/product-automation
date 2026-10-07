@@ -225,3 +225,24 @@ def test_four_totals_without_the_empty_first_cell_belong_to_the_picks_columns():
     lines = [x if not x.startswith("Total") else "Total | 641 | 682 | 615 | 625" for x in PAGE_SHIFT_II]
     assert {k: v[0] for k, v in read_register(page(lines)).totals.items()} == {1: 641, 2: 682, 3: 615, 4: 625}
     assert set(read_register(page(PAGE_SHIFT_III)).totals) == {0, 1, 2, 3, 4}  # five written: unchanged
+
+
+def test_suggestions_for_the_real_gemini_misreads_and_none_for_the_workers_own_errors():
+    """Gemini's real misreads on 2 Oct 2026: 2284 for 2234 (m/c 28), 3149 for 3140 (m/c 41), the "9" picks of m/c 31
+    one column early. Each gets a one-click correction both neighbours agree on. The worker's own mistakes
+    (m/c 48 writes 25 for 35; the 04-00 total 590 for 610) get no suggestion: nothing on the page says what is right."""
+    ii_lines = [x.replace("2234 24", "2284 24").replace("3140? 10", "3149 10") for x in PAGE_SHIFT_II]
+    iii_lines = [x.replace("31 | B.fall | - | | 00 | 09 09 |", "31 | B.fall | - | | 0 9 | 9 |") for x in PAGE_SHIFT_III]
+    ii, iii = read_register(page(ii_lines)), read_register(page(iii_lines))
+    res = compute.calculate(as_values(ii, iii), written(ii, iii))
+
+    def suggestion(key):
+        return [i.suggestion for i in res.issues.get(key, []) if i.suggestion]
+
+    assert suggestion(("II", "28", 3))[0] | {"why": ""} == {"slot": 3, "field": "reading", "value": "2234", "why": ""}
+    assert suggestion(("II", "28", 4))[0]["value"] == "2234"  # the next cell points at the same reading
+    assert suggestion(("II", "41", 3))[0]["value"] == "3140"
+    assert suggestion(("III", "31", 4))[0] | {"why": ""} == {"slot": 4, "field": "picks", "value": "9", "why": ""}
+    assert suggestion(("III", "31", 3))[0]["value"] is None  # the 9 does not belong under the restart reading
+    assert suggestion(("II", "48", 2)) == [] and suggestion(("III", "27", 2)) == []
+    assert suggestion(("II", "39", 1)) == []  # 1357 or 1557: no shift I page to confirm it
