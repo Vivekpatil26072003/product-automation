@@ -52,6 +52,8 @@ Notes written as "Label value" lines or tables are extracted without AI. Free-fo
 
 **Pick reading registers (WGS-02):** a photo of a shift page of the hourly production reading register is read into that day's register (one database row per machine, time and shift: meter reading, picks, mark), checked (picks = reading − previous reading, column totals, shift-to-shift readings), approved, and listed under *Pick registers* with Excel / PDF / CSV / SQL download and email. See [docs/runbooks/pick-registers.md](docs/runbooks/pick-registers.md).
 
+**Run it for the office:** one PC runs everything; phones on the same Wi-Fi open `http://<PC address>:3000`. Start with `infra\local\start-office.ps1` (also at Windows login). See [docs/runbooks/office-wifi.md](docs/runbooks/office-wifi.md). Static hosts like Netlify cannot run this app.
+
 **Diary automation:** a worker photographs a diary page on *Diary photos*; orders are read (Claude AI or Azure Read), reviewed, saved to Customer orders, and a PDF report is emailed to the owner automatically. Setup and the live acceptance test: [docs/runbooks/diary-automation.md](docs/runbooks/diary-automation.md).
 
 Customer order notes (typed or handwritten) become order forms, then saved orders with a PDF and a *Send Email* button; handwriting needs an OCR reader (Azure free tier). See [docs/runbooks/customer-orders.md](docs/runbooks/customer-orders.md).
